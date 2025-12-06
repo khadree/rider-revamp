@@ -1,0 +1,364 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Rider Service API",
+    "description": "Complete API for rider authentication, profile management, and ride requests in a ride-hailing platform.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "dev@yourcompany.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api/riders",
+      "description": "Local development"
+    },
+    {
+      "url": "https://api.yourapp.com/riders",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Authentication & Registration" },
+    { "name": "Profile", "description": "Rider profile" },
+    { "name": "Ride Requests", "description": "Create and manage ride requests" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RiderResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" },
+          "isVerified": { "type": "boolean" },
+          "rating": { "type": "number", "minimum": 0, "maximum": 5 },
+          "totalTrips": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string" }
+        }
+      },
+      "Location": {
+        "type": "object",
+        "required": ["lat", "lng"],
+        "properties": {
+          "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+          "lng": { "type": "number", "minimum": -180, "maximum": 180 },
+          "address": { "type": "string", "nullable": true }
+        }
+      },
+      "RideRequestResponse": {
+        "type": "object",
+        "properties": {
+          "rideRequestId": { "type": "string", "format": "uuid" },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING_MATCHING", "MATCHED", "ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+          },
+          "pickup": { "$ref": "#/components/schemas/Location" },
+          "dropoff": { "$ref": "#/components/schemas/Location" },
+          "fare": { "type": "number" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Validation error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "Unauthorized": {
+        "description": "Invalid or missing token",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register a new rider",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "firstName", "lastName", "phoneNumber"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "phoneNumber": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "rider": { "$ref": "#/components/schemas/RiderResponse" },
+                        "token": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "description": "Email already exists" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with email & password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "rider": { "$ref": "#/components/schemas/RiderResponse" },
+                        "token": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify email with token",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["token"], "properties": { "token": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Email verified" }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Request password reset",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email"], "properties": { "email": { "type": "string", "format": "email" } } } } }
+        },
+        "responses": { "200": { "description": "Reset email sent if account exists" } }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Reset password with token",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["token", "password"], "properties": { "token": { "type": "string" }, "password": { "type": "string", "minLength": 8 } } } } }
+        },
+        "responses": { "200": { "description": "Password updated" }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      }
+    },
+    "/auth/google": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Start Google OAuth",
+        "responses": { "302": { "description": "Redirect to Google" } }
+      }
+    },
+    "/auth/google/callback": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Google OAuth callback",
+        "responses": { "302": { "description": "Redirect to frontend with JWT" } }
+      }
+    },
+    "/profile": {
+      "get": {
+        "tags": ["Profile"],
+        "summary": "Get current rider profile",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Rider profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RiderResponse" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/{id}": {
+      "get": {
+        "tags": ["Profile"],
+        "summary": "Get public rider info by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Public rider info" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/ride-requests": {
+      "post": {
+        "tags": ["Ride Requests"],
+        "summary": "Create a new ride request",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["pickup_lat", "pickup_lng", "dropoff_lat", "dropoff_lng", "fare"],
+                "properties": {
+                  "pickup_lat": { "type": "string" },
+                  "pickup_lng": { "type": "string" },
+                  "pickup_address": { "type": "string" },
+                  "dropoff_lat": { "type": "string" },
+                  "dropoff_lng": { "type": "string" },
+                  "dropoff_address": { "type": "string" },
+                  "vehicle_type": { "type": "string", "enum": ["standard", "comfort", "premium"], "default": "standard" },
+                  "fare": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Ride request accepted – searching for driver",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RideRequestResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/ride-requests/history": {
+      "get": {
+        "tags": ["Ride Requests"],
+        "summary": "Get rider ride history",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "List of ride requests" } }
+      }
+    },
+    "/ride-requests/{id}": {
+      "get": {
+        "tags": ["Ride Requests"],
+        "summary": "Get single ride request",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Ride request details" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Ride Requests"],
+        "summary": "Cancel ride request",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "reason": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Ride cancelled" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness probe",
+        "responses": { "200": { "description": "READY" } }
+      }
+    }
+  }
+}

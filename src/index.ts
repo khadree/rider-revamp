@@ -3,9 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-
+import swaggerUi from 'swagger-ui-express';
 import riderRoutes from './routes/rider'; 
 import { connectDB } from './config/database';
+import swaggerDocument from './swagger.json'; 
+
 
 dotenv.config();
 
@@ -22,6 +24,10 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use(limiter);
+
+
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use('/api/riders', riderRoutes);
 

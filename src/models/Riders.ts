@@ -174,10 +174,10 @@ export class RiderRepository {
 static async createRideRequest(requestData: CreateRideRequestInput): Promise<RideRequest> {
   console.log('📥 Repository received:', {
     ...requestData,
-    riderId: requestData.riderId?.substring(0, 8) + '...' // Log partial ID for privacy
+    riderId: requestData.riderId?.substring(0, 8) + '...' 
   });
 
-  // Validate all required fields
+  
   if (!requestData.riderId) {
     throw new Error('Missing riderId');
   }
@@ -198,9 +198,6 @@ static async createRideRequest(requestData: CreateRideRequestInput): Promise<Rid
     throw new Error('dropoffLng is undefined or null');
   }
 
-  console.log('✅ All coordinates validated in repository');
-
-  // First, get fare estimate from Trip Service
   let estimatedFare: number | null = null;
   
   try {
@@ -239,7 +236,6 @@ static async createRideRequest(requestData: CreateRideRequestInput): Promise<Rid
     estimatedFare = await this.calculateFallbackFare(requestData);
   }
 
-  // Now create the ride request with the estimated fare
   const query = `
     INSERT INTO ride_requests (
       rider_id, pickup_lat, pickup_lng, pickup_address, 

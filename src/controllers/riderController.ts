@@ -5,6 +5,7 @@ import { EmailServiceClient } from '../utils/email-service-client';
 import { redis } from '../config/redis';
 import { AuthRequest } from '../middleware/auth';
 import { OAuth2Client } from 'google-auth-library';
+import { v4 as uuidv4 } from 'uuid';
 import {
   registerSchema,
   loginSchema,
@@ -20,15 +21,13 @@ export class RiderController {
     `${process.env.RIDER_SERVICE_URL || 'http://localhost:3001'}/api/riders/auth/google/callback`
   );
 
-  // Helper method to log and publish Redis events
+
   private static async logAndPublish(channel: string, data: any): Promise<void> {
     const eventData = {
       event: channel,
       timestamp: new Date().toISOString(),
       data
     };
-
-    console.log(`📤 REDIS PUBLISH [${channel}]:`, JSON.stringify(eventData, null, 2));
     
     try {
       await redis.publish(channel, JSON.stringify(eventData));
@@ -42,10 +41,6 @@ export class RiderController {
   static googleAuth = async (req: Request, res: Response) => {
     try {
       const redirectUri = `${process.env.RIDER_SERVICE_URL || 'http://localhost:3001'}/api/riders/auth/google/callback`;
-
-      console.log('🔐 Google OAuth Configuration:');
-      console.log('Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
-      console.log('Redirect URI:', redirectUri);
 
       const url = this.googleClient.generateAuthUrl({
         access_type: 'offline',
@@ -756,154 +751,121 @@ export class RiderController {
     }
   };
 
-  static createRideRequest = async (req: AuthRequest, res: Response) => {
-    try {
-      console.log('📨 Raw request body:', JSON.stringify(req.body, null, 2));
+ static createRideRequest = async (req: AuthRequest, res: Response) => {
+	try {
+		const riderId = req.rider?.riderId;
+		if (!riderId) {
+			return res.status(401).json({
+				success: false,
+				error: 'Authentication required'
+			});
+		}
 
-      const riderId = req.rider?.riderId;
+		const {
+			pickup_lat,
+			pickup_lng,
+			pickup_address,
+			dropoff_lat,
+			dropoff_lng,
+			dropoff_address,
+			vehicle_type,
+			fare 
+		} = req.body;
+		console.log(pickup_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, vehicle_type, fare) 
+		const isMissing = !pickup_lat || !pickup_lng ||
+			!dropoff_lat || !dropoff_lng ||
+			!fare;
+			
+		if (isMissing) { 
+			console.error('❌ Missing required fields in request');
+			await this.logAndPublish('ride.request_validation_error', {
+				rider_id: riderId,
+				reason: 'missing_fields',
+				ip: req.ip
+			});
 
-      if (!riderId) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication required'
-        });
-      }
+			return res.status(400).json({
+				success: false,
+				error: 'Pickup and dropoff coordinates, and fare are required'
+			});
+		}
 
-      const {
-        pickup_lat,
-        pickup_lng,
-        pickup_address,
-        dropoff_lat,
-        dropoff_lng,
-        dropoff_address,
-        vehicle_type
-      } = req.body;
+		const pickupLat = parseFloat(pickup_lat);
+		const pickupLng = parseFloat(pickup_lng);
+		const dropoffLat = parseFloat(dropoff_lat);
+		const dropoffLng = parseFloat(dropoff_lng);
+		const rideFare = parseFloat(fare); 
+		
+		if (isNaN(pickupLat) || isNaN(pickupLng) || isNaN(dropoffLat) || isNaN(dropoffLng) || isNaN(rideFare) || rideFare <= 0) { // <-- VALIDATE FARE
+			console.error('❌ Invalid numeric values:', {
+				pickupLat, pickupLng, dropoffLat, dropoffLng, rideFare
+			});
 
-      console.log('📍 Extracted coordinates:', {
-        pickup_lat,
-        pickup_lng,
-        dropoff_lat,
-        dropoff_lng,
-        types: {
-          pickup_lat_type: typeof pickup_lat,
-          pickup_lng_type: typeof pickup_lng,
-          dropoff_lat_type: typeof dropoff_lat,
-          dropoff_lng_type: typeof dropoff_lng
-        }
-      });
+			await this.logAndPublish('ride.request_validation_error', {
+				rider_id: riderId,
+				reason: 'invalid_numeric_values',
+				coordinates: { pickupLat, pickupLng, dropoffLat, dropoffLng },
+				fare: rideFare,
+				ip: req.ip
+			});
 
-      // Validate required fields exist
-      if (pickup_lat === undefined || pickup_lng === undefined ||
-        dropoff_lat === undefined || dropoff_lng === undefined) {
-        console.error('❌ Missing coordinates in request');
-        
-        // Publish ride request validation error
-        await this.logAndPublish('ride.request_validation_error', {
-          rider_id: riderId,
-          reason: 'missing_coordinates',
-          ip: req.ip
-        });
+			return res.status(400).json({
+				success: false,
+				error: 'Invalid coordinate or fare values'
+			});
+		}
 
-        return res.status(400).json({
-          success: false,
-          error: 'Pickup and dropoff coordinates are required'
-        });
-      }
+    const new_ride_request_id = uuidv4();
+		const rideRequestDataForMatching = {
+			ride_request_id: new_ride_request_id,
+			rider_id: riderId,
+			rider_name: `${req.rider?.firstName || ''} ${req.rider?.lastName || ''}`.trim() || 'Passenger',
+			rider_rating: req.rider?.rating || 4.8,
+			pickup_location: {
+				lat: pickupLat,
+				lng: pickupLng,
+				address: pickup_address || 'Selected location'
+			},
+			dropoff_location: {
+				lat: dropoffLat,
+				lng: dropoffLng,
+				address: dropoff_address || 'Selected destination'
+			},
+			vehicle_type: vehicle_type || 'standard',
+			fare: rideFare, 
+			requested_at: new Date().toISOString(),
+			ip: req.ip
+		};
+		await this.logAndPublish('ride.requested', rideRequestDataForMatching);
 
-      // Parse coordinates to numbers
-      const pickupLat = parseFloat(pickup_lat);
-      const pickupLng = parseFloat(pickup_lng);
-      const dropoffLat = parseFloat(dropoff_lat);
-      const dropoffLng = parseFloat(dropoff_lng);
+		console.log(`✅ Ride request ${rideRequestDataForMatching.ride_request_id} published to matching queue.`);
+		return res.status(202).json({
+			success: true,
+			message: 'Ride request accepted. Searching for driver.',
+			data: {
+				rideRequestId: rideRequestDataForMatching.ride_request_id,
+				status: 'PENDING_MATCHING',
+				pickup: rideRequestDataForMatching.pickup_location,
+				dropoff: rideRequestDataForMatching.dropoff_location,
+				fare: rideRequestDataForMatching.fare // Also return fare in response
+			}
+		});
 
-      console.log('🔢 Parsed coordinates:', {
-        pickupLat,
-        pickupLng,
-        dropoffLat,
-        dropoffLng
-      });
+	} catch (error: any) {
+		// ... (General error handling) ...
+		console.error('❌ Create ride request error:', error);
+		await this.logAndPublish('ride.request_error', {
+			rider_id: req.rider?.riderId,
+			error: error.message,
+			ip: req.ip
+		});
 
-      // Validate parsed coordinates are valid numbers
-      if (isNaN(pickupLat) || isNaN(pickupLng) || isNaN(dropoffLat) || isNaN(dropoffLng)) {
-        console.error('❌ Invalid coordinate values:', {
-          pickupLat, pickupLng, dropoffLat, dropoffLng
-        });
-        
-        // Publish ride request validation error
-        await this.logAndPublish('ride.request_validation_error', {
-          rider_id: riderId,
-          reason: 'invalid_coordinates',
-          coordinates: { pickupLat, pickupLng, dropoffLat, dropoffLng },
-          ip: req.ip
-        });
-
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid coordinate values'
-        });
-      }
-
-      const requestData: CreateRideRequestInput = {
-        riderId,
-        pickupLat,
-        pickupLng,
-        pickupAddress: pickup_address || 'Selected location',
-        dropoffLat,
-        dropoffLng,
-        dropoffAddress: dropoff_address || 'Selected destination',
-        vehicleType: vehicle_type || 'standard'
-      };
-
-      console.log('📤 Final request data for repository:', requestData);
-
-      const rideRequest = await RiderRepository.createRideRequest(requestData);
-
-      console.log('✅ Ride request created successfully:', rideRequest.id);
-
-      await this.logAndPublish('ride.requested', {
-        ride_request_id: rideRequest.id,
-        rider_id: rideRequest.riderId,
-        rider_name: `${req.rider?.firstName || ''} ${req.rider?.lastName || ''}`.trim() || 'Passenger',
-        rider_phone: req.rider?.phone || '+2340000000000',
-        rider_rating: req.rider?.rating || 4.8,
-        pickup_address: rideRequest.pickupAddress,
-        dropoff_address: rideRequest.dropoffAddress,
-        pickup_location: {
-          lat: rideRequest.pickupLat,
-          lng: rideRequest.pickupLng
-        },
-        dropoff_location: {
-          lat: rideRequest.dropoffLat,
-          lng: rideRequest.dropoffLng
-        },
-        vehicle_type: rideRequest.vehicleType,
-        estimated_fare: rideRequest.estimatedFare,
-        requested_at: new Date().toISOString(),
-        ip: req.ip
-      });
-
-      res.status(201).json({
-        success: true,
-        data: { rideRequest }
-      });
-
-    } catch (error: any) {
-      console.error('❌ Create ride request error:', error);
-      console.error('❌ Error stack:', error.stack);
-
-      // Publish ride request error event
-      await this.logAndPublish('ride.request_error', {
-        rider_id: req.rider?.riderId,
-        error: error.message,
-        ip: req.ip
-      });
-
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error'
-      });
-    }
-  };
+		res.status(500).json({
+			success: false,
+			error: 'Internal server error'
+		});
+	}
+};
 
   static getRideRequest = async (req: Request, res: Response) => {
     try {
