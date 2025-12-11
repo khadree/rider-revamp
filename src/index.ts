@@ -31,6 +31,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use('/api/riders', riderRoutes);
 
+
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 

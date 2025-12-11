@@ -61,7 +61,6 @@ const createTables = async () => {
       )
     `);
 
-    // Create indexes
     console.log('🔄 Creating indexes...');
     await client.query('CREATE INDEX idx_riders_email ON riders(email)');
     await client.query('CREATE INDEX idx_riders_verification_token ON riders(verification_token)');

@@ -13,6 +13,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema
 } from '../utils/validation';
+import { riderTripService } from '../utils/tripServiceClient';
 
 export class RiderController {
   private static googleClient = new OAuth2Client(
@@ -867,154 +868,392 @@ export class RiderController {
 	}
 };
 
-  static getRideRequest = async (req: Request, res: Response) => {
+  static getMyTrips = async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params;
-      const rideRequest = await RiderRepository.getRideRequestById(id);
-
-      if (!rideRequest) {
-        // Publish ride request not found event
-        await this.logAndPublish('ride.request_lookup_failed', {
-          ride_request_id: id,
-          reason: 'not_found',
-          ip: req.ip
-        });
-
-        return res.status(404).json({
+      const riderId = req.rider?.riderId;
+      if (!riderId) {
+        return res.status(401).json({
           success: false,
-          error: 'Ride request not found'
+          error: 'Authentication required',
         });
       }
 
-      // Publish ride request view event
-      await this.logAndPublish('ride.request_viewed', {
-        ride_request_id: rideRequest.id,
-        rider_id: rideRequest.riderId,
-        status: rideRequest.status,
-        viewed_at: new Date().toISOString(),
-        ip: req.ip
+      const {
+        status,
+        limit = '100',
+        offset = '0',
+        include_cancelled = 'false',
+      } = req.query;
+
+      const trips = await riderTripService.getTripHistory(riderId, {
+        status: status as 'completed' | 'cancelled',
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+        includeCancelled: include_cancelled === 'true',
+      });
+
+      // Publish trips view event
+      await this.logAndPublish('rider.trips_viewed', {
+        rider_id: riderId,
+        status_filter: status,
+        trip_count: trips.trips.length,
+        total_trips: trips.pagination.total,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
       });
 
       res.json({
         success: true,
-        data: { rideRequest }
+        data: trips,
       });
-
     } catch (error: any) {
-      console.error('Get ride request error:', error);
-      
-      // Publish ride request lookup error event
-      await this.logAndPublish('ride.request_lookup_error', {
-        ride_request_id: req.params.id,
+      console.error('Get rider trips error:', error);
+
+      // Publish trips error event
+      await this.logAndPublish('rider.trips_error', {
+        rider_id: req.rider?.riderId,
         error: error.message,
-        ip: req.ip
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
       });
 
       res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: error.message || 'Failed to fetch trips',
       });
     }
   };
 
-  static getRiderRideRequests = async (req: AuthRequest, res: Response) => {
+  /**
+   * Get trip statistics for the authenticated rider
+   */
+  static getTripStatistics = async (req: AuthRequest, res: Response) => {
     try {
       const riderId = req.rider?.riderId;
-
       if (!riderId) {
         return res.status(401).json({
           success: false,
-          error: 'Authentication required'
+          error: 'Authentication required',
         });
       }
 
-      const { limit = '10', offset = '0', status } = req.query;
-
-      const rideRequests = await RiderRepository.getRiderRideRequests(
-        riderId,
-        parseInt(limit as string),
-        parseInt(offset as string)
-      );
-
-      // Publish ride history view event
-      await this.logAndPublish('rider.ride_history_viewed', {
-        rider_id: riderId,
-        filters: { status, limit, offset },
-        request_count: rideRequests.length,
-        viewed_at: new Date().toISOString(),
-        ip: req.ip
+      // Get completed trips
+      const completedTrips = await riderTripService.getTripHistory(riderId, {
+        status: 'completed',
+        limit: 1000,
       });
 
-      // Filter by status if provided
-      const filteredRequests = status
-        ? rideRequests.filter(req => req.status === status)
-        : rideRequests;
+      // Get all trips including cancelled
+      const allTrips = await riderTripService.getTripHistory(riderId, {
+        includeCancelled: true,
+        limit: 1000,
+      });
+
+      // Filter cancelled trips
+      const cancelledTrips = allTrips.trips.filter(trip => 
+        trip.status === 'cancelled'
+      );
+
+      // Calculate total spent (sum of actual_fare from completed trips)
+      const totalSpent = completedTrips.trips.reduce((sum, trip) => 
+        sum + (trip.actual_fare || trip.estimated_fare || 0), 0
+      );
+
+      // Calculate average rating (if driver_rating is available)
+      const completedTripsWithRating = completedTrips.trips.filter(trip => 
+        trip.driver_rating
+      );
+      const averageDriverRating = completedTripsWithRating.length > 0
+        ? completedTripsWithRating.reduce((sum, trip) => 
+            sum + (trip.driver_rating || 0), 0) / completedTripsWithRating.length
+        : 0;
+
+      const statistics = {
+        total_trips: completedTrips.trips.length + cancelledTrips.length,
+        completed_trips: completedTrips.trips.length,
+        cancelled_trips: cancelledTrips.length,
+        total_spent: totalSpent,
+        average_driver_rating: parseFloat(averageDriverRating.toFixed(1)),
+        most_used_vehicle_type: this.getMostUsedVehicleType(completedTrips.trips),
+        total_distance_km: this.getTotalDistance(completedTrips.trips),
+      };
+
+      // Publish statistics view event
+      await this.logAndPublish('rider.trip_statistics_viewed', {
+        rider_id: riderId,
+        total_trips: statistics.total_trips,
+        total_spent: statistics.total_spent,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
+      });
 
       res.json({
         success: true,
         data: {
-          rideRequests: filteredRequests,
-          pagination: {
-            limit: parseInt(limit as string),
-            offset: parseInt(offset as string),
-            total: filteredRequests.length
+          rider_id: riderId,
+          statistics,
+          summary: {
+            last_trip_date: completedTrips.trips[0]?.completed_at || null,
+            first_trip_date: completedTrips.trips[completedTrips.trips.length - 1]?.completed_at || null,
           }
-        }
+        },
       });
-
     } catch (error: any) {
-      console.error('Get rider ride requests error:', error);
-      
-      // Publish ride history view error event
-      await this.logAndPublish('rider.ride_history_view_error', {
+      console.error('Get trip statistics error:', error);
+
+      // Publish statistics error event
+      await this.logAndPublish('rider.trip_statistics_error', {
         rider_id: req.rider?.riderId,
         error: error.message,
-        ip: req.ip
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
       });
 
       res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: error.message || 'Failed to fetch trip statistics',
       });
     }
   };
 
-  static cancelRideRequest = async (req: Request, res: Response) => {
+  /**
+   * Get specific trip details for the authenticated rider
+   */
+  static getTripDetails = async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params;
-      const { reason } = req.body;
+      const riderId = req.rider?.riderId;
+      if (!riderId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+      }
 
-      const rideRequest = await RiderRepository.updateRideRequestStatus(id, 'cancelled');
+      const { tripId } = req.params;
 
-      // Publish ride cancelled event
-      await this.logAndPublish('ride.cancelled', {
-        ride_request_id: rideRequest.id,
-        rider_id: rideRequest.riderId,
-        cancelled_by: 'rider',
-        reason: reason || 'No reason provided',
-        cancelled_at: new Date().toISOString(),
-        ip: req.ip
+      const trip = await riderTripService.getTripById(tripId);
+
+      // Note: You might want to add validation here to ensure the trip belongs to this rider
+      // This depends on your trip service implementation
+      
+      // Publish trip details view event
+      await this.logAndPublish('rider.trip_details_viewed', {
+        rider_id: riderId,
+        trip_id: tripId,
+        trip_status: trip.status,
+        fare: trip.actual_fare || trip.estimated_fare,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
       });
 
       res.json({
         success: true,
-        data: { rideRequest }
+        data: {
+          trip: trip,
+        },
+      });
+    } catch (error: any) {
+      console.error('Get trip details error:', error);
+
+      // Publish trip details error event
+      await this.logAndPublish('rider.trip_details_error', {
+        rider_id: req.rider?.riderId,
+        trip_id: req.params.tripId,
+        error: error.message,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
       });
 
+      if (error.message.includes('Trip not found') || error.message.includes('404')) {
+        return res.status(404).json({
+          success: false,
+          error: 'Trip not found',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch trip details',
+      });
+    }
+  };
+
+  /**
+   * Get rider's recent trips (last 10)
+   */
+  static getRecentTrips = async (req: AuthRequest, res: Response) => {
+    try {
+      const riderId = req.rider?.riderId;
+      if (!riderId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+      }
+
+      const trips = await riderTripService.getTripHistory(riderId, {
+        limit: 10,
+        offset: 0,
+      });
+
+      // Publish recent trips view event
+      await this.logAndPublish('rider.recent_trips_viewed', {
+        rider_id: riderId,
+        trip_count: trips.trips.length,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
+      });
+
+      res.json({
+        success: true,
+        data: {
+          trips: trips.trips,
+          has_more: trips.pagination.has_more,
+        },
+      });
     } catch (error: any) {
-      console.error('Cancel ride request error:', error);
-      
-      // Publish ride cancellation error event
-      await this.logAndPublish('ride.cancellation_error', {
-        ride_request_id: req.params.id,
+      console.error('Get recent trips error:', error);
+
+      // Publish recent trips error event
+      await this.logAndPublish('rider.recent_trips_error', {
+        rider_id: req.rider?.riderId,
         error: error.message,
-        ip: req.ip
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
       });
 
       res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: error.message || 'Failed to fetch recent trips',
       });
     }
   };
+
+  /**
+   * Get rider dashboard with trip summary
+   */
+  static getDashboard = async (req: AuthRequest, res: Response) => {
+    try {
+      const riderId = req.rider?.riderId;
+      if (!riderId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+      }
+
+      // Get data in parallel
+      const [recentTrips, tripStats] = await Promise.all([
+        riderTripService.getTripHistory(riderId, { limit: 5 }),
+        this.getTripStatisticsForDashboard(riderId),
+      ]);
+
+      const dashboard = {
+        rider_id: riderId,
+        recent_trips: recentTrips.trips,
+        statistics: tripStats,
+        upcoming_features: {
+          scheduled_rides: 0,
+          favorite_drivers: 0,
+          saved_locations: 0,
+        }
+      };
+
+      // Publish dashboard view event
+      await this.logAndPublish('rider.dashboard_viewed', {
+        rider_id: riderId,
+        recent_trip_count: recentTrips.trips.length,
+        total_trips: tripStats.total_trips,
+        total_spent: tripStats.total_spent,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
+      });
+
+      res.json({
+        success: true,
+        data: dashboard,
+      });
+    } catch (error: any) {
+      console.error('Dashboard error:', error);
+
+      // Publish dashboard error event
+      await this.logAndPublish('rider.dashboard_error', {
+        rider_id: req.rider?.riderId,
+        error: error.message,
+        ip: req.ip,
+        user_agent: req.headers['user-agent'],
+      });
+
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to load dashboard',
+      });
+    }
+  };
+
+  // Helper method for dashboard statistics
+  private static async getTripStatisticsForDashboard(riderId: string): Promise<any> {
+    try {
+      const completedTrips = await riderTripService.getTripHistory(riderId, {
+        status: 'completed',
+        limit: 1000,
+      });
+
+      const totalSpent = completedTrips.trips.reduce((sum, trip) => 
+        sum + (trip.actual_fare || trip.estimated_fare || 0), 0
+      );
+
+      const totalDistance = completedTrips.trips.reduce((sum, trip) => 
+        sum + (trip.distance_km || 0), 0
+      );
+
+      return {
+        total_trips: completedTrips.pagination.total,
+        completed_trips: completedTrips.trips.length,
+        total_spent: totalSpent,
+        total_distance_km: totalDistance,
+        average_trip_cost: completedTrips.trips.length > 0 
+          ? totalSpent / completedTrips.trips.length 
+          : 0,
+      };
+    } catch (error) {
+      console.error('Error getting trip statistics for dashboard:', error);
+      return {
+        total_trips: 0,
+        completed_trips: 0,
+        total_spent: 0,
+        total_distance_km: 0,
+        average_trip_cost: 0,
+      };
+    }
+  }
+
+  // Helper method to get most used vehicle type
+  private static getMostUsedVehicleType(trips: any[]): string {
+    const vehicleCounts: Record<string, number> = {};
+    
+    trips.forEach(trip => {
+      const vehicleType = trip.vehicle_model || 'Standard';
+      vehicleCounts[vehicleType] = (vehicleCounts[vehicleType] || 0) + 1;
+    });
+
+    let mostUsed = 'Standard';
+    let maxCount = 0;
+
+    for (const [vehicleType, count] of Object.entries(vehicleCounts)) {
+      if (count > maxCount) {
+        mostUsed = vehicleType;
+        maxCount = count;
+      }
+    }
+
+    return mostUsed;
+  }
+
+  // Helper method to get total distance
+  private static getTotalDistance(trips: any[]): number {
+    return trips.reduce((sum, trip) => sum + (trip.distance_km || 0), 0);
+  }
 }
+
+

@@ -12,13 +12,13 @@ router.post('/auth/reset-password', RiderController.resetPassword);
 
 router.get('/auth/google', RiderController.googleAuth);
 router.get('/auth/google/callback', RiderController.googleAuthCallback);
-
-router.get('/profile', authenticateToken, RiderController.getCurrentRider);
-router.get('/:id', RiderController.getRider); 
-
+router.get('/me', authenticateToken, RiderController.getCurrentRider);
 router.post('/ride-requests', authenticateToken, RiderController.createRideRequest);
-router.get('/ride-requests/history', authenticateToken, RiderController.getRiderRideRequests);
-router.get('/ride-requests/:id', RiderController.getRideRequest);
-router.delete('/ride-requests/:id', RiderController.cancelRideRequest);
+
+router.get('/me/trips', authenticateToken, RiderController.getMyTrips);
+router.get('/me/trips/statistics', authenticateToken, RiderController.getTripStatistics);
+router.get('/me/trips/recent', authenticateToken, RiderController.getRecentTrips);
+router.get('/me/trips/:tripId', authenticateToken, RiderController.getTripDetails);
+router.get('/me/dashboard', authenticateToken, RiderController.getDashboard);
 
 export default router;

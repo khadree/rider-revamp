@@ -22,7 +22,9 @@
   "tags": [
     { "name": "Auth", "description": "Authentication & Registration" },
     { "name": "Profile", "description": "Rider profile" },
-    { "name": "Ride Requests", "description": "Create and manage ride requests" }
+    { "name": "Ride Requests", "description": "Create and manage ride requests" },
+    { "name": "Trips", "description": "Trip history and statistics" },
+    { "name": "Dashboard", "description": "Rider dashboard information" }
   ],
   "components": {
     "securitySchemes": {
@@ -74,6 +76,75 @@
           "pickup": { "$ref": "#/components/schemas/Location" },
           "dropoff": { "$ref": "#/components/schemas/Location" },
           "fare": { "type": "number" }
+        }
+      },
+      "TripResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "driverId": { "type": "string", "format": "uuid" },
+          "driverName": { "type": "string" },
+          "vehicle": {
+            "type": "object",
+            "properties": {
+              "model": { "type": "string" },
+              "plate": { "type": "string" },
+              "color": { "type": "string" }
+            }
+          },
+          "pickup": { "$ref": "#/components/schemas/Location" },
+          "dropoff": { "$ref": "#/components/schemas/Location" },
+          "fare": { "type": "number" },
+          "distance": { "type": "number", "description": "Distance in kilometers" },
+          "duration": { "type": "number", "description": "Duration in minutes" },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING_MATCHING", "MATCHED", "ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+          },
+          "startedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TripStatistics": {
+        "type": "object",
+        "properties": {
+          "totalTrips": { "type": "integer" },
+          "totalSpent": { "type": "number" },
+          "totalDistance": { "type": "number", "description": "Total distance in kilometers" },
+          "averageRating": { "type": "number", "minimum": 0, "maximum": 5 },
+          "monthlyStats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": { "type": "string" },
+                "tripCount": { "type": "integer" },
+                "totalSpent": { "type": "number" }
+              }
+            }
+          },
+          "favoriteVehicleType": { "type": "string", "enum": ["standard", "comfort", "premium"] }
+        }
+      },
+      "DashboardResponse": {
+        "type": "object",
+        "properties": {
+          "rider": { "$ref": "#/components/schemas/RiderResponse" },
+          "activeTrip": { "$ref": "#/components/schemas/TripResponse", "nullable": true },
+          "recentTrips": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TripResponse" }
+          },
+          "quickStats": {
+            "type": "object",
+            "properties": {
+              "thisMonthTrips": { "type": "integer" },
+              "thisMonthSpent": { "type": "number" },
+              "totalTrips": { "type": "integer" },
+              "averageRating": { "type": "number" }
+            }
+          }
         }
       }
     },
@@ -233,7 +304,7 @@
         "responses": { "302": { "description": "Redirect to frontend with JWT" } }
       }
     },
-    "/profile": {
+    "/me": {
       "get": {
         "tags": ["Profile"],
         "summary": "Get current rider profile",
@@ -297,6 +368,160 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RideRequestResponse" } } }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/me/trips": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Get rider's trip history",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of trips",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "trips": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/TripResponse" }
+                        },
+                        "total": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "offset": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/me/trips/statistics": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Get rider's trip statistics",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "period", "in": "query", "schema": { "type": "string", "enum": ["week", "month", "year", "all"], "default": "month" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trip statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/TripStatistics" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/me/trips/recent": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Get recent trips (last 5 completed trips)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Recent trips",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TripResponse" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/me/trips/{tripId}": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Get detailed information about a specific trip",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trip details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/TripResponse" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/me/dashboard": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get rider dashboard information",
+        "description": "Returns comprehensive dashboard data including active trip, recent trips, and statistics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Dashboard data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DashboardResponse" }
+                  }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }

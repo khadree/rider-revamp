@@ -8,6 +8,7 @@
     "migrate": "ts-node src/database/migrations/createTables.ts"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
