@@ -1,4 +1,14 @@
 services:
+  rider-migrate:
+    build:
+      context: .
+    env_file:
+      - .env
+    command: node dist/migrations/createTable.js   
+    networks:
+      - swiftride-net
+    restart: "no"   # runs once
+
   rider-service:
     build:
       context: .
@@ -6,6 +16,9 @@ services:
       - .env
     ports:
       - "3001:3001"
+    depends_on:
+      rider-migrate:
+        condition: service_completed_successfully   
     networks:
       - swiftride-net
 
