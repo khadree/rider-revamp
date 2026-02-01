@@ -16,11 +16,11 @@ import {
 import { riderTripService } from '../utils/tripServiceClient';
 
 export class RiderController {
-  private static googleClient = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.RIDER_SERVICE_URL || 'http://localhost:3001'}/api/riders/auth/google/callback`
-  );
+private static googleClient = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/v1/riders/auth/google/callback'
+});
 
 
   private static async logAndPublish(channel: string, data: any): Promise<void> {
@@ -39,45 +39,36 @@ export class RiderController {
     }
   }
 
-  static googleAuth = async (req: Request, res: Response) => {
-    try {
-      const redirectUri = `${process.env.RIDER_SERVICE_URL || 'http://localhost:3001'}/api/riders/auth/google/callback`;
+static googleAuth = async (req: Request, res: Response) => {
+  try {
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
+      'http://localhost:3001/api/v1/riders/auth/google/callback';
 
-      const url = this.googleClient.generateAuthUrl({
-        access_type: 'offline',
-        scope: [
-          'https://www.googleapis.com/auth/userinfo.email',
-          'https://www.googleapis.com/auth/userinfo.profile'
-        ],
-        prompt: 'consent',
-        redirect_uri: redirectUri
-      });
+    const url = this.googleClient.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile'
+      ],
+      prompt: 'consent',
+      redirect_uri: redirectUri, // Add this line
+      include_granted_scopes: true
+    });
 
-      console.log('🔗 Google OAuth URL:', url);
+    console.log('🔗 Google OAuth URL:', url);
+    
+    // Publish event...
+    await this.logAndPublish('rider.google_auth_initiated', {
+      ip: req.ip,
+      user_agent: req.headers['user-agent']
+    });
 
-      // Publish Google auth initiation event
-      await this.logAndPublish('rider.google_auth_initiated', {
-        ip: req.ip,
-        user_agent: req.headers['user-agent']
-      });
+    res.redirect(url);
 
-      res.redirect(url);
-
-    } catch (error: any) {
-      console.error('Google auth error:', error);
-      
-      // Publish Google auth error event
-      await this.logAndPublish('rider.google_auth_error', {
-        error: error.message,
-        ip: req.ip
-      });
-
-      res.status(500).json({
-        success: false,
-        error: 'Google authentication failed'
-      });
-    }
-  };
+  } catch (error: any) {
+    // Error handling...
+  }
+};
 
   static googleAuthCallback = async (req: Request, res: Response) => {
     try {
@@ -1190,6 +1181,105 @@ export class RiderController {
       });
     }
   };
+
+  static getActiveRideDetails = async (req: AuthRequest, res: Response) => {
+  try {
+    const { rideRequestId } = req.params;
+    const riderId = req.rider?.riderId;
+
+    if (!riderId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    // 1. Get trip from trip-service using your existing client
+    let trip;
+    try {
+      trip = await riderTripService.getTripByRideRequestId(rideRequestId);
+    } catch (err: any) {
+      if (err.response?.status === 404 || err.message?.includes('not found')) {
+        // No trip yet → driver not assigned / still matching
+        return res.status(200).json({
+          success: true,
+          data: {
+            rideRequestId,
+            status: 'SEARCHING',          // or 'REQUESTED' / 'PENDING_MATCHING' / 'NO_DRIVER_FOUND'
+            driverInfo: null,
+            pickupLocation: null,         // ← ideally fetch from Redis if you stored original request
+            dropoffLocation: null,
+            fareEstimate: null,
+            vehicleType: null,
+            message: 'Still searching for a driver...',
+            
+          }
+        });
+      }
+      throw err; 
+    }
+    const responseData = {
+      rideRequestId,
+      status: trip.status || 'ACTIVE',  
+      driverInfo: trip.driver
+        ? {
+            id: trip.driver.id,
+            name: trip.driver.name || `${trip.driver.firstName || ''} ${trip.driver.lastName || ''}`.trim(),
+            phone: trip.driver.phone,
+            rating: trip.driver.rating || 4.8,
+            photoUrl: trip.driver.photoUrl || trip.driver.profilePicture,
+            // vehicle info usually lives here or in trip.vehicle
+          }
+        : null,
+      vehicleInfo: trip.vehicle
+        ? {
+            type: trip.vehicle.type || trip.vehicle_type || 'standard',
+            model: trip.vehicle.model,
+            color: trip.vehicle.color,
+            plate: trip.vehicle.plate || trip.vehicle.licensePlate,
+            photoUrl: trip.vehicle.photoUrl,
+          }
+        : null,
+      pickupLocation: trip.pickup || trip.pickup_location || { lat: null, lng: null, address: null },
+      dropoffLocation: trip.dropoff || trip.dropoff_location || { lat: null, lng: null, address: null },
+      fareEstimate: trip.estimated_fare || trip.fare || trip.estimatedFare,
+      actualFare: trip.actual_fare || null,
+      // Bonus fields that are very useful for active ride UI:
+      etaMinutes: trip.eta?.minutesToPickup || trip.etaToPickup || null,
+      distanceLeftKm: trip.distance?.remaining || null,
+      currentDriverLocation: trip.driver?.currentLocation || null, // { lat, lng }
+      startedAt: trip.started_at || trip.startedAt,
+      // You can add surgeMultiplier, paymentMethodUsed, etc. if relevant
+    };
+
+    // Optional: publish analytics event
+    await this.logAndPublish('ride.active_details_viewed', {
+      rider_id: riderId,
+      ride_request_id: rideRequestId,
+      trip_id: trip.id || trip.tripId,
+      status: trip.status,
+      ip: req.ip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: responseData
+    });
+
+  } catch (error: any) {
+    console.error('getActiveRideDetails error:', error);
+    await this.logAndPublish('ride.active_details_error', {
+      rideRequestId: req.params.rideRequestId,
+      rider_id: req.rider?.riderId,
+      error: error.message,
+      ip: req.ip,
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch active ride details'
+    });
+  }
+};
+
+
 
   // Helper method for dashboard statistics
   private static async getTripStatisticsForDashboard(riderId: string): Promise<any> {

@@ -6,7 +6,7 @@ export class EmailServiceClient {
     try {
       const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
       
-      const response = await fetch(`${this.emailServiceUrl}/api/email/send-verification`, {
+      const response = await fetch(`${this.emailServiceUrl}/api/v1/email/send-verification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ export class EmailServiceClient {
     try {
       const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
       
-      const response = await fetch(`${this.emailServiceUrl}/api/email/send-password-reset`, {
+      const response = await fetch(`${this.emailServiceUrl}/api/v1/email/send-password-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

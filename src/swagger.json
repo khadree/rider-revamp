@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:3001/api/riders",
+      "url": "http://localhost:3001/api/v1/riders",
       "description": "Local development"
     },
     {
@@ -165,7 +165,7 @@
   },
   "security": [{ "bearerAuth": [] }],
   "paths": {
-    "/auth/register": {
+    "/api/v1/riders/auth/register": {
       "post": {
         "tags": ["Auth"],
         "summary": "Register a new rider",
@@ -213,7 +213,7 @@
         }
       }
     },
-    "/auth/login": {
+    "/api/v1/riders/auth/login": {
       "post": {
         "tags": ["Auth"],
         "summary": "Login with email & password",
@@ -257,7 +257,7 @@
         }
       }
     },
-    "/auth/verify-email": {
+    "/api/v1/riders/auth/verify-email": {
       "post": {
         "tags": ["Auth"],
         "summary": "Verify email with token",
@@ -268,7 +268,7 @@
         "responses": { "200": { "description": "Email verified" }, "400": { "$ref": "#/components/responses/BadRequest" } }
       }
     },
-    "/auth/forgot-password": {
+    "/api/v1/riders/auth/forgot-password": {
       "post": {
         "tags": ["Auth"],
         "summary": "Request password reset",
@@ -279,7 +279,7 @@
         "responses": { "200": { "description": "Reset email sent if account exists" } }
       }
     },
-    "/auth/reset-password": {
+    "/api/v1/riders/auth/reset-password": {
       "post": {
         "tags": ["Auth"],
         "summary": "Reset password with token",
@@ -290,21 +290,21 @@
         "responses": { "200": { "description": "Password updated" }, "400": { "$ref": "#/components/responses/BadRequest" } }
       }
     },
-    "/auth/google": {
+    "/api/v1/riders/auth/google": {
       "get": {
         "tags": ["Auth"],
         "summary": "Start Google OAuth",
         "responses": { "302": { "description": "Redirect to Google" } }
       }
     },
-    "/auth/google/callback": {
+    "/api/v1/riders/auth/google/callback": {
       "get": {
         "tags": ["Auth"],
         "summary": "Google OAuth callback",
         "responses": { "302": { "description": "Redirect to frontend with JWT" } }
       }
     },
-    "/me": {
+    "/api/v1/riders/me": {
       "get": {
         "tags": ["Profile"],
         "summary": "Get current rider profile",
@@ -318,7 +318,7 @@
         }
       }
     },
-    "/{id}": {
+    "/api/v1/riders/{id}": {
       "get": {
         "tags": ["Profile"],
         "summary": "Get public rider info by ID",
@@ -336,7 +336,7 @@
         }
       }
     },
-    "/ride-requests": {
+    "/api/v1/riders/ride-requests": {
       "post": {
         "tags": ["Ride Requests"],
         "summary": "Create a new ride request",
@@ -372,7 +372,7 @@
         }
       }
     },
-    "/me/trips": {
+    "/api/v1/riders/me/trips": {
       "get": {
         "tags": ["Trips"],
         "summary": "Get rider's trip history",
@@ -414,7 +414,7 @@
         }
       }
     },
-    "/me/trips/statistics": {
+    "/api/v1/riders/me/trips/statistics": {
       "get": {
         "tags": ["Trips"],
         "summary": "Get rider's trip statistics",
@@ -441,7 +441,7 @@
         }
       }
     },
-    "/me/trips/recent": {
+    "/api/v1/riders/me/trips/recent": {
       "get": {
         "tags": ["Trips"],
         "summary": "Get recent trips (last 5 completed trips)",
@@ -468,7 +468,7 @@
         }
       }
     },
-    "/me/trips/{tripId}": {
+    "/api/v1/riders/me/trips/{tripId}": {
       "get": {
         "tags": ["Trips"],
         "summary": "Get detailed information about a specific trip",
@@ -501,7 +501,7 @@
         }
       }
     },
-    "/me/dashboard": {
+    "/api/v1/riders/me/dashboard": {
       "get": {
         "tags": ["Dashboard"],
         "summary": "Get rider dashboard information",
@@ -526,7 +526,7 @@
         }
       }
     },
-    "/ride-requests/history": {
+    "/api/v1/riders/ride-requests/history": {
       "get": {
         "tags": ["Ride Requests"],
         "summary": "Get rider ride history",
@@ -539,7 +539,7 @@
         "responses": { "200": { "description": "List of ride requests" } }
       }
     },
-    "/ride-requests/{id}": {
+    "/api/v1/riders/ride-requests/{id}": {
       "get": {
         "tags": ["Ride Requests"],
         "summary": "Get single ride request",
@@ -573,13 +573,13 @@
         }
       }
     },
-    "/health": {
+    "/api/v1/riders/health": {
       "get": {
         "summary": "Health check",
         "responses": { "200": { "description": "OK" } }
       }
     },
-    "/ready": {
+    "/api/v1/riders/ready": {
       "get": {
         "summary": "Readiness probe",
         "responses": { "200": { "description": "READY" } }

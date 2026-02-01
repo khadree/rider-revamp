@@ -21,4 +21,8 @@ router.get('/me/trips/recent', authenticateToken, RiderController.getRecentTrips
 router.get('/me/trips/:tripId', authenticateToken, RiderController.getTripDetails);
 router.get('/me/dashboard', authenticateToken, RiderController.getDashboard);
 
+
+router.get('/ride-requests/:rideRequestId/active', authenticateToken, RiderController.getActiveRideDetails);
+
+
 export default router;

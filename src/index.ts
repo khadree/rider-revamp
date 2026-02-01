@@ -27,12 +27,12 @@ app.use(limiter);
 
 
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api/v1/riders/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use('/api/riders', riderRoutes);
+app.use('/api/v1/riders', riderRoutes);
 
 
-app.get('/health', (req, res) => {
+app.get('/api/v1/riders/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     service: 'rider-service',
@@ -40,7 +40,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.get('/ready', (req, res) => {
+app.get('/api/v1/riders/ready', (req, res) => {
   res.json({ 
     status: 'READY', 
     service: 'rider-service',
@@ -69,7 +69,8 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚶 Rider service running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health: http://localhost:${PORT}/health`);
+      console.log(`🔗 Health: http://localhost:${PORT}/api/v1/riders/health`);
+      console.log(`🚶 Rider service doc: http://localhost:${PORT}/api/v1/riders/docs`);
       console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Set' : 'Missing!'}`);
     });
   } catch (error) {

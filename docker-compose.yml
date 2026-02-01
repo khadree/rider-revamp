@@ -1,24 +1,24 @@
+
 services:
+  # 1. Migration Service
   rider-migrate:
-    build:
-      context: .
+    build: .  
+    image: swiftride-rider
+    command: node dist/migrations/createTable.js
     env_file:
       - .env
-    command: node dist/migrations/createTable.js   
+    restart: "no"
     networks:
       - swiftride-net
-    restart: "no"   # runs once
 
   rider-service:
-    build:
-      context: .
-    env_file:
-      - .env
+    build: . 
+    image: swiftride-rider
+    container_name: rider-service
     ports:
       - "3001:3001"
-    depends_on:
-      rider-migrate:
-        condition: service_completed_successfully   
+    env_file:
+      - .env
     networks:
       - swiftride-net
 

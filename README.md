@@ -1,7 +1,7 @@
 Rider Service - Docker Setup
-A microservice for managing rider information, built with Node.js, Express, TypeScript, and PostgreSQL. Containerized with Docker.
+A microservice for managing rider information, rider authentication built with Node.js, Express, TypeScript, and PostgreSQL. Containerized with Docker.
 
-🚀 Quick Start with Docker
+🚀 Quick Start with docker compose
 1. Clone and Navigate
 git clone <repository-url>
 cd rider-service
@@ -19,17 +19,17 @@ JWT_EXPIRES_IN=2d
 DATABASE_URL=postgresql://<username>:<password>@<host>:5432/<database>?sslmode=require
 
 # Redis
-REDIS_HOST=local-redis
+REDIS_HOST=swiftride-redis
 REDIS_PORT=6379
 REDIS_PASSWORD=your-redis-password
 
 # Frontend & other services
 FRONTEND_URL=http://localhost:3000
-EMAIL_SERVICE_URL=http://localhost:3002
+EMAIL_SERVICE_URL=http://email-service:3002
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-RIDER_SERVICE_URL=http://localhost:3001
-TRIP_SERVICE_URL=http://localhost:3005
+RIDER_SERVICE_URL=http://rider-service:3001
+TRIP_SERVICE_URL=http://trip-service:3005
 
 
 3. Run the service

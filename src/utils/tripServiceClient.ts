@@ -3,7 +3,6 @@ import axios, { AxiosInstance } from 'axios';
 import { RiderTrip, RiderTripHistoryResponse } from '../types/trips';
 
 
-
 export class RiderTripServiceClient {
   private client: AxiosInstance;
 
@@ -68,6 +67,19 @@ export class RiderTripServiceClient {
       throw error;
     }
   }
+
+  async getTripByRideRequestId(rideRequestId: string): Promise<any | null> {
+  try {
+    const response = await this.client.get(`/trips/by-ride-request/${rideRequestId}`);
+    if (response.data.success) {
+      return response.data.data.trip;
+    }
+    return null;
+  } catch (error) {
+    console.log('No trip found for ride_request_id:', rideRequestId);
+    return null;
+  }
+}
 
   /**
    * Health check
