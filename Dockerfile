@@ -6,7 +6,8 @@ WORKDIR /app
 # ---- Dependencies ----
 FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && npm cache clean --force
+# RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # ---- Build ----
 FROM base AS builder
