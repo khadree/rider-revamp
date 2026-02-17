@@ -1,0 +1,65 @@
+name: Deploy Rider Service to EKS
+
+on:
+    push:
+        branches:
+            - "main"
+
+env:
+    AWS_REGION: us-east-1
+    ECR_REPOSITORY: nate-rideshare-rider-service
+    EKS_CLUSTER_NAME: nate-rideshare-cluster
+    SERVICE_NAME: rider-service
+    CONTAINER_NAME: rider-service
+    K8S_NAMESPACE: rideshare
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Configure AWS credentials (OIDC)
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+                  role-session-name: github-actions-session
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build and push Docker image to Amazon ECR
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  push: true
+                  tags: |
+                      ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+                      ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:v1.0
+
+            - name: Update kubeconfig
+              run: |
+                  aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+
+            - name: Apply Kubernetes manifests
+              run: |
+                  kubectl apply -n "${{ env.K8S_NAMESPACE }}" -f k8s/
+
+            - name: Update Kubernetes deployment with new image
+              env:
+                  REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  IMAGE="${REGISTRY}/${{ env.ECR_REPOSITORY }}:${IMAGE_TAG}"
+                  kubectl -n "${{ env.K8S_NAMESPACE }}" set image deployment/${{ env.SERVICE_NAME }} ${{ env.CONTAINER_NAME }}="${IMAGE}"
+                  kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deployment/${{ env.SERVICE_NAME }} --timeout=120s
