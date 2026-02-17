@@ -31,7 +31,6 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 RIDER_SERVICE_URL=http://rider-service:3001
 TRIP_SERVICE_URL=http://trip-service:3005
 
-
 3. Run the service
 With Docker Compose, the service will start automatically using the .env file:
 docker compose up --build 
