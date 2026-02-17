@@ -16,11 +16,11 @@ import {
 import { riderTripService } from '../utils/tripServiceClient';
 
 export class RiderController {
-private static googleClient = new OAuth2Client({
-  clientId: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/v1/riders/auth/google/callback'
-});
+  private static googleClient = new OAuth2Client({
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/v1/riders/auth/google/callback'
+  });
 
 
   private static async logAndPublish(channel: string, data: any): Promise<void> {
@@ -29,7 +29,7 @@ private static googleClient = new OAuth2Client({
       timestamp: new Date().toISOString(),
       data
     };
-    
+
     try {
       await redis.publish(channel, JSON.stringify(eventData));
       console.log(`✅ REDIS PUBLISH SUCCESS [${channel}]`);
@@ -39,36 +39,36 @@ private static googleClient = new OAuth2Client({
     }
   }
 
-static googleAuth = async (req: Request, res: Response) => {
-  try {
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-      'http://localhost:3001/api/v1/riders/auth/google/callback';
+  static googleAuth = async (req: Request, res: Response) => {
+    try {
+      const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
+        'http://localhost:3001/api/v1/riders/auth/google/callback';
 
-    const url = this.googleClient.generateAuthUrl({
-      access_type: 'offline',
-      scope: [
-        'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/userinfo.profile'
-      ],
-      prompt: 'consent',
-      redirect_uri: redirectUri, // Add this line
-      include_granted_scopes: true
-    });
+      const url = this.googleClient.generateAuthUrl({
+        access_type: 'offline',
+        scope: [
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/userinfo.profile'
+        ],
+        prompt: 'consent',
+        redirect_uri: redirectUri, // Add this line
+        include_granted_scopes: true
+      });
 
-    console.log('🔗 Google OAuth URL:', url);
-    
-    // Publish event...
-    await this.logAndPublish('rider.google_auth_initiated', {
-      ip: req.ip,
-      user_agent: req.headers['user-agent']
-    });
+      console.log('🔗 Google OAuth URL:', url);
 
-    res.redirect(url);
+      // Publish event...
+      await this.logAndPublish('rider.google_auth_initiated', {
+        ip: req.ip,
+        user_agent: req.headers['user-agent']
+      });
 
-  } catch (error: any) {
-    // Error handling...
-  }
-};
+      res.redirect(url);
+
+    } catch (error: any) {
+      // Error handling...
+    }
+  };
 
   static googleAuthCallback = async (req: Request, res: Response) => {
     try {
@@ -167,7 +167,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Google callback error:', error);
-      
+
       await this.logAndPublish('rider.google_auth_callback_error', {
         error: error.message,
         ip: req.ip
@@ -198,11 +198,11 @@ static googleAuth = async (req: Request, res: Response) => {
       }
 
       const { email, password, firstName, lastName, phoneNumber } = value;
-      
+
       const existingRider = await RiderRepository.findRiderByEmail(email);
       if (existingRider) {
         console.log('❌ Rider already exists with email:', email);
-        
+
         // Publish duplicate registration attempt
         await this.logAndPublish('rider.registration_duplicate', {
           email: email,
@@ -278,7 +278,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Registration error:', error);
-      
+
       // Publish registration error event
       await this.logAndPublish('rider.registration_error', {
         error: error.message,
@@ -396,7 +396,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Login error:', error);
-      
+
       // Publish login error event
       await this.logAndPublish('rider.login_error', {
         error: error.message,
@@ -474,7 +474,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Email verification error:', error);
-      
+
       // Publish verification error event
       await this.logAndPublish('rider.verification_error', {
         error: error.message
@@ -552,7 +552,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Forgot password error:', error);
-      
+
       // Publish forgot password error event
       await this.logAndPublish('rider.forgot_password_error', {
         error: error.message,
@@ -610,7 +610,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Reset password error:', error);
-      
+
       // Publish password reset error event
       await this.logAndPublish('rider.password_reset_error', {
         error: error.message,
@@ -670,7 +670,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Get rider error:', error);
-      
+
       // Publish profile view error event
       await this.logAndPublish('rider.profile_view_error', {
         error: error.message,
@@ -728,7 +728,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
     } catch (error: any) {
       console.error('Get rider error:', error);
-      
+
       // Publish rider lookup error event
       await this.logAndPublish('rider.lookup_error', {
         rider_id: req.params.id,
@@ -743,121 +743,137 @@ static googleAuth = async (req: Request, res: Response) => {
     }
   };
 
- static createRideRequest = async (req: AuthRequest, res: Response) => {
-	try {
-		const riderId = req.rider?.riderId;
-		if (!riderId) {
-			return res.status(401).json({
-				success: false,
-				error: 'Authentication required'
-			});
-		}
+  static createRideRequest = async (req: AuthRequest, res: Response) => {
+    try {
+      const riderId = req.rider?.riderId;
+      if (!riderId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+      }
 
-		const {
-			pickup_lat,
-			pickup_lng,
-			pickup_address,
-			dropoff_lat,
-			dropoff_lng,
-			dropoff_address,
-			vehicle_type,
-			fare 
-		} = req.body;
-		console.log(pickup_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, vehicle_type, fare) 
-		const isMissing = !pickup_lat || !pickup_lng ||
-			!dropoff_lat || !dropoff_lng ||
-			!fare;
-			
-		if (isMissing) { 
-			console.error('❌ Missing required fields in request');
-			await this.logAndPublish('ride.request_validation_error', {
-				rider_id: riderId,
-				reason: 'missing_fields',
-				ip: req.ip
-			});
+      const {
+        pickup_lat,
+        pickup_lng,
+        pickup_address,
+        dropoff_lat,
+        dropoff_lng,
+        dropoff_address,
+        vehicle_type,
+        fare
+      } = req.body;
+      console.log(pickup_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, vehicle_type, fare)
+      const isMissing = !pickup_lat || !pickup_lng ||
+        !dropoff_lat || !dropoff_lng ||
+        !fare;
 
-			return res.status(400).json({
-				success: false,
-				error: 'Pickup and dropoff coordinates, and fare are required'
-			});
-		}
+      if (isMissing) {
+        console.error('❌ Missing required fields in request');
+        await this.logAndPublish('ride.request_validation_error', {
+          rider_id: riderId,
+          reason: 'missing_fields',
+          ip: req.ip
+        });
 
-		const pickupLat = parseFloat(pickup_lat);
-		const pickupLng = parseFloat(pickup_lng);
-		const dropoffLat = parseFloat(dropoff_lat);
-		const dropoffLng = parseFloat(dropoff_lng);
-		const rideFare = parseFloat(fare); 
-		
-		if (isNaN(pickupLat) || isNaN(pickupLng) || isNaN(dropoffLat) || isNaN(dropoffLng) || isNaN(rideFare) || rideFare <= 0) { // <-- VALIDATE FARE
-			console.error('❌ Invalid numeric values:', {
-				pickupLat, pickupLng, dropoffLat, dropoffLng, rideFare
-			});
+        return res.status(400).json({
+          success: false,
+          error: 'Pickup and dropoff coordinates, and fare are required'
+        });
+      }
 
-			await this.logAndPublish('ride.request_validation_error', {
-				rider_id: riderId,
-				reason: 'invalid_numeric_values',
-				coordinates: { pickupLat, pickupLng, dropoffLat, dropoffLng },
-				fare: rideFare,
-				ip: req.ip
-			});
+      const pickupLat = parseFloat(pickup_lat);
+      const pickupLng = parseFloat(pickup_lng);
+      const dropoffLat = parseFloat(dropoff_lat);
+      const dropoffLng = parseFloat(dropoff_lng);
+      const rideFare = parseFloat(fare);
 
-			return res.status(400).json({
-				success: false,
-				error: 'Invalid coordinate or fare values'
-			});
-		}
+      if (isNaN(pickupLat) || isNaN(pickupLng) || isNaN(dropoffLat) || isNaN(dropoffLng) || isNaN(rideFare) || rideFare <= 0) { // <-- VALIDATE FARE
+        console.error('❌ Invalid numeric values:', {
+          pickupLat, pickupLng, dropoffLat, dropoffLng, rideFare
+        });
 
-    const new_ride_request_id = uuidv4();
-		const rideRequestDataForMatching = {
-			ride_request_id: new_ride_request_id,
-			rider_id: riderId,
-			rider_name: `${req.rider?.firstName || ''} ${req.rider?.lastName || ''}`.trim() || 'Passenger',
-			rider_rating: req.rider?.rating || 4.8,
-			pickup_location: {
-				lat: pickupLat,
-				lng: pickupLng,
-				address: pickup_address || 'Selected location'
-			},
-			dropoff_location: {
-				lat: dropoffLat,
-				lng: dropoffLng,
-				address: dropoff_address || 'Selected destination'
-			},
-			vehicle_type: vehicle_type || 'standard',
-			fare: rideFare, 
-			requested_at: new Date().toISOString(),
-			ip: req.ip
-		};
-		await this.logAndPublish('ride.requested', rideRequestDataForMatching);
+        await this.logAndPublish('ride.request_validation_error', {
+          rider_id: riderId,
+          reason: 'invalid_numeric_values',
+          coordinates: { pickupLat, pickupLng, dropoffLat, dropoffLng },
+          fare: rideFare,
+          ip: req.ip
+        });
 
-		console.log(`✅ Ride request ${rideRequestDataForMatching.ride_request_id} published to matching queue.`);
-		return res.status(202).json({
-			success: true,
-			message: 'Ride request accepted. Searching for driver.',
-			data: {
-				rideRequestId: rideRequestDataForMatching.ride_request_id,
-				status: 'PENDING_MATCHING',
-				pickup: rideRequestDataForMatching.pickup_location,
-				dropoff: rideRequestDataForMatching.dropoff_location,
-				fare: rideRequestDataForMatching.fare // Also return fare in response
-			}
-		});
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid coordinate or fare values'
+        });
+      }
 
-	} catch (error: any) {
-		// ... (General error handling) ...
-		console.error('❌ Create ride request error:', error);
-		await this.logAndPublish('ride.request_error', {
-			rider_id: req.rider?.riderId,
-			error: error.message,
-			ip: req.ip
-		});
 
-		res.status(500).json({
-			success: false,
-			error: 'Internal server error'
-		});
-	}
-};
+      // 1. Create Ride Request in Database
+      const rideRequest = await RiderRepository.createRideRequest({
+        riderId: riderId,
+        pickupLat: pickupLat,
+        pickupLng: pickupLng,
+        pickupAddress: pickup_address,
+        dropoffLat: dropoffLat,
+        dropoffLng: dropoffLng,
+        dropoffAddress: dropoff_address,
+        vehicleType: vehicle_type
+      });
+
+      console.log(`✅ Ride request persisted with ID: ${rideRequest.id}`);
+
+      // 2. Prepare Event Data
+      const rideRequestDataForMatching = {
+        ride_request_id: rideRequest.id,
+        rider_id: rideRequest.riderId,
+        rider_name: `${req.rider?.firstName || ''} ${req.rider?.lastName || ''}`.trim() || 'Passenger',
+        rider_rating: req.rider?.rating || 4.8,
+        pickup_location: {
+          lat: rideRequest.pickupLat,
+          lng: rideRequest.pickupLng,
+          address: rideRequest.pickupAddress || 'Selected location'
+        },
+        dropoff_location: {
+          lat: rideRequest.dropoffLat,
+          lng: rideRequest.dropoffLng,
+          address: rideRequest.dropoffAddress || 'Selected destination'
+        },
+        vehicle_type: rideRequest.vehicleType || 'standard',
+        fare: rideRequest.estimatedFare || rideFare,
+        requested_at: rideRequest.requestedAt.toISOString(),
+        ip: req.ip
+      };
+
+      // 3. Publish Event
+      await this.logAndPublish('ride.requested', rideRequestDataForMatching);
+
+      console.log(`✅ Ride request ${rideRequestDataForMatching.ride_request_id} published to matching queue.`);
+      return res.status(202).json({
+        success: true,
+        message: 'Ride request accepted. Searching for driver.',
+        data: {
+          rideRequestId: rideRequestDataForMatching.ride_request_id,
+          status: 'PENDING_MATCHING',
+          pickup: rideRequestDataForMatching.pickup_location,
+          dropoff: rideRequestDataForMatching.dropoff_location,
+          fare: rideRequestDataForMatching.fare
+        }
+      });
+    } catch (error: any) {
+      // ... (General error handling) ...
+      console.error('❌ Create ride request error:', error);
+      await this.logAndPublish('ride.request_error', {
+        rider_id: req.rider?.riderId,
+        error: error.message,
+        ip: req.ip
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  };
 
   static getMyTrips = async (req: AuthRequest, res: Response) => {
     try {
@@ -941,22 +957,22 @@ static googleAuth = async (req: Request, res: Response) => {
       });
 
       // Filter cancelled trips
-      const cancelledTrips = allTrips.trips.filter(trip => 
+      const cancelledTrips = allTrips.trips.filter(trip =>
         trip.status === 'cancelled'
       );
 
       // Calculate total spent (sum of actual_fare from completed trips)
-      const totalSpent = completedTrips.trips.reduce((sum, trip) => 
+      const totalSpent = completedTrips.trips.reduce((sum, trip) =>
         sum + (trip.actual_fare || trip.estimated_fare || 0), 0
       );
 
       // Calculate average rating (if driver_rating is available)
-      const completedTripsWithRating = completedTrips.trips.filter(trip => 
+      const completedTripsWithRating = completedTrips.trips.filter(trip =>
         trip.driver_rating
       );
       const averageDriverRating = completedTripsWithRating.length > 0
-        ? completedTripsWithRating.reduce((sum, trip) => 
-            sum + (trip.driver_rating || 0), 0) / completedTripsWithRating.length
+        ? completedTripsWithRating.reduce((sum, trip) =>
+          sum + (trip.driver_rating || 0), 0) / completedTripsWithRating.length
         : 0;
 
       const statistics = {
@@ -1026,7 +1042,7 @@ static googleAuth = async (req: Request, res: Response) => {
 
       // Note: You might want to add validation here to ensure the trip belongs to this rider
       // This depends on your trip service implementation
-      
+
       // Publish trip details view event
       await this.logAndPublish('rider.trip_details_viewed', {
         rider_id: riderId,
@@ -1183,43 +1199,43 @@ static googleAuth = async (req: Request, res: Response) => {
   };
 
   static getActiveRideDetails = async (req: AuthRequest, res: Response) => {
-  try {
-    const { rideRequestId } = req.params;
-    const riderId = req.rider?.riderId;
-
-    if (!riderId) {
-      return res.status(401).json({ success: false, error: 'Authentication required' });
-    }
-
-    // 1. Get trip from trip-service using your existing client
-    let trip;
     try {
-      trip = await riderTripService.getTripByRideRequestId(rideRequestId);
-    } catch (err: any) {
-      if (err.response?.status === 404 || err.message?.includes('not found')) {
-        // No trip yet → driver not assigned / still matching
-        return res.status(200).json({
-          success: true,
-          data: {
-            rideRequestId,
-            status: 'SEARCHING',          // or 'REQUESTED' / 'PENDING_MATCHING' / 'NO_DRIVER_FOUND'
-            driverInfo: null,
-            pickupLocation: null,         // ← ideally fetch from Redis if you stored original request
-            dropoffLocation: null,
-            fareEstimate: null,
-            vehicleType: null,
-            message: 'Still searching for a driver...',
-            
-          }
-        });
+      const { rideRequestId } = req.params;
+      const riderId = req.rider?.riderId;
+
+      if (!riderId) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
       }
-      throw err; 
-    }
-    const responseData = {
-      rideRequestId,
-      status: trip.status || 'ACTIVE',  
-      driverInfo: trip.driver
-        ? {
+
+      // 1. Get trip from trip-service using your existing client
+      let trip;
+      try {
+        trip = await riderTripService.getTripByRideRequestId(rideRequestId);
+      } catch (err: any) {
+        if (err.response?.status === 404 || err.message?.includes('not found')) {
+          // No trip yet → driver not assigned / still matching
+          return res.status(200).json({
+            success: true,
+            data: {
+              rideRequestId,
+              status: 'SEARCHING',          // or 'REQUESTED' / 'PENDING_MATCHING' / 'NO_DRIVER_FOUND'
+              driverInfo: null,
+              pickupLocation: null,         // ← ideally fetch from Redis if you stored original request
+              dropoffLocation: null,
+              fareEstimate: null,
+              vehicleType: null,
+              message: 'Still searching for a driver...',
+
+            }
+          });
+        }
+        throw err;
+      }
+      const responseData = {
+        rideRequestId,
+        status: trip.status || 'ACTIVE',
+        driverInfo: trip.driver
+          ? {
             id: trip.driver.id,
             name: trip.driver.name || `${trip.driver.firstName || ''} ${trip.driver.lastName || ''}`.trim(),
             phone: trip.driver.phone,
@@ -1227,57 +1243,57 @@ static googleAuth = async (req: Request, res: Response) => {
             photoUrl: trip.driver.photoUrl || trip.driver.profilePicture,
             // vehicle info usually lives here or in trip.vehicle
           }
-        : null,
-      vehicleInfo: trip.vehicle
-        ? {
+          : null,
+        vehicleInfo: trip.vehicle
+          ? {
             type: trip.vehicle.type || trip.vehicle_type || 'standard',
             model: trip.vehicle.model,
             color: trip.vehicle.color,
             plate: trip.vehicle.plate || trip.vehicle.licensePlate,
             photoUrl: trip.vehicle.photoUrl,
           }
-        : null,
-      pickupLocation: trip.pickup || trip.pickup_location || { lat: null, lng: null, address: null },
-      dropoffLocation: trip.dropoff || trip.dropoff_location || { lat: null, lng: null, address: null },
-      fareEstimate: trip.estimated_fare || trip.fare || trip.estimatedFare,
-      actualFare: trip.actual_fare || null,
-      // Bonus fields that are very useful for active ride UI:
-      etaMinutes: trip.eta?.minutesToPickup || trip.etaToPickup || null,
-      distanceLeftKm: trip.distance?.remaining || null,
-      currentDriverLocation: trip.driver?.currentLocation || null, // { lat, lng }
-      startedAt: trip.started_at || trip.startedAt,
-      // You can add surgeMultiplier, paymentMethodUsed, etc. if relevant
-    };
+          : null,
+        pickupLocation: trip.pickup || trip.pickup_location || { lat: null, lng: null, address: null },
+        dropoffLocation: trip.dropoff || trip.dropoff_location || { lat: null, lng: null, address: null },
+        fareEstimate: trip.estimated_fare || trip.fare || trip.estimatedFare,
+        actualFare: trip.actual_fare || null,
+        // Bonus fields that are very useful for active ride UI:
+        etaMinutes: trip.eta?.minutesToPickup || trip.etaToPickup || null,
+        distanceLeftKm: trip.distance?.remaining || null,
+        currentDriverLocation: trip.driver?.currentLocation || null, // { lat, lng }
+        startedAt: trip.started_at || trip.startedAt,
+        // You can add surgeMultiplier, paymentMethodUsed, etc. if relevant
+      };
 
-    // Optional: publish analytics event
-    await this.logAndPublish('ride.active_details_viewed', {
-      rider_id: riderId,
-      ride_request_id: rideRequestId,
-      trip_id: trip.id || trip.tripId,
-      status: trip.status,
-      ip: req.ip,
-    });
+      // Optional: publish analytics event
+      await this.logAndPublish('ride.active_details_viewed', {
+        rider_id: riderId,
+        ride_request_id: rideRequestId,
+        trip_id: trip.id || trip.tripId,
+        status: trip.status,
+        ip: req.ip,
+      });
 
-    return res.status(200).json({
-      success: true,
-      data: responseData
-    });
+      return res.status(200).json({
+        success: true,
+        data: responseData
+      });
 
-  } catch (error: any) {
-    console.error('getActiveRideDetails error:', error);
-    await this.logAndPublish('ride.active_details_error', {
-      rideRequestId: req.params.rideRequestId,
-      rider_id: req.rider?.riderId,
-      error: error.message,
-      ip: req.ip,
-    });
+    } catch (error: any) {
+      console.error('getActiveRideDetails error:', error);
+      await this.logAndPublish('ride.active_details_error', {
+        rideRequestId: req.params.rideRequestId,
+        rider_id: req.rider?.riderId,
+        error: error.message,
+        ip: req.ip,
+      });
 
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch active ride details'
-    });
-  }
-};
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch active ride details'
+      });
+    }
+  };
 
 
 
@@ -1289,11 +1305,11 @@ static googleAuth = async (req: Request, res: Response) => {
         limit: 1000,
       });
 
-      const totalSpent = completedTrips.trips.reduce((sum, trip) => 
+      const totalSpent = completedTrips.trips.reduce((sum, trip) =>
         sum + (trip.actual_fare || trip.estimated_fare || 0), 0
       );
 
-      const totalDistance = completedTrips.trips.reduce((sum, trip) => 
+      const totalDistance = completedTrips.trips.reduce((sum, trip) =>
         sum + (trip.distance_km || 0), 0
       );
 
@@ -1302,8 +1318,8 @@ static googleAuth = async (req: Request, res: Response) => {
         completed_trips: completedTrips.trips.length,
         total_spent: totalSpent,
         total_distance_km: totalDistance,
-        average_trip_cost: completedTrips.trips.length > 0 
-          ? totalSpent / completedTrips.trips.length 
+        average_trip_cost: completedTrips.trips.length > 0
+          ? totalSpent / completedTrips.trips.length
           : 0,
       };
     } catch (error) {
@@ -1321,7 +1337,7 @@ static googleAuth = async (req: Request, res: Response) => {
   // Helper method to get most used vehicle type
   private static getMostUsedVehicleType(trips: any[]): string {
     const vehicleCounts: Record<string, number> = {};
-    
+
     trips.forEach(trip => {
       const vehicleType = trip.vehicle_model || 'Standard';
       vehicleCounts[vehicleType] = (vehicleCounts[vehicleType] || 0) + 1;
