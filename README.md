@@ -34,6 +34,7 @@ TRIP_SERVICE_URL=http://trip-service:3005
 3. Run the service
 With Docker Compose, the service will start automatically using the .env file:
 docker compose up --build 
+
 This will:
 Start the Rider Service on port 3001
 Connect automatically to Redis and PostgreSQL using the values in .env
