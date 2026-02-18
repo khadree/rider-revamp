@@ -8,7 +8,7 @@ export class RiderTripServiceClient {
 
   constructor(baseURL?: string) {
     this.client = axios.create({
-      baseURL: baseURL || process.env.NEXT_PUBLIC_TRIP_SERVICE_URL || 'http://localhost:3005/api',
+      baseURL: baseURL || process.env.TRIP_SERVICE_URL || 'http://localhost:3005/api',
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',

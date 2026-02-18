@@ -12,6 +12,7 @@ data:
   FRONTEND_URL: "https://rideshare.nathanielamadi.live"
   EMAIL_SERVICE_URL: "http://email-service:3002"
   RIDER_SERVICE_URL: "http://rider-service:3001"
-  TRIP_SERVICE_URL: "http://trip-service:3005"
+  TRIP_SERVICE_URL: "http://trip-service:3005/api"
+  GOOGLE_REDIRECT_URI: "https://rideshare.nathanielamadi.live/api/v1/riders/auth/google/callback"
 
   JWT_EXPIRES_IN: "7d"

@@ -11,6 +11,7 @@ env:
     EKS_CLUSTER_NAME: nate-rideshare-cluster
     SERVICE_NAME: rider-service
     CONTAINER_NAME: rider-service
+    DB_MIGRATE_CONTAINER_NAME: rider-migrate
     K8S_NAMESPACE: rideshare
 
 jobs:
@@ -60,5 +61,8 @@ jobs:
                   IMAGE_TAG: ${{ github.sha }}
               run: |
                   IMAGE="${REGISTRY}/${{ env.ECR_REPOSITORY }}:${IMAGE_TAG}"
-                  kubectl -n "${{ env.K8S_NAMESPACE }}" set image deployment/${{ env.SERVICE_NAME }} ${{ env.CONTAINER_NAME }}="${IMAGE}"
+                  kubectl -n "${{ env.K8S_NAMESPACE }}" set image deployment/${{ env.SERVICE_NAME }} \
+                  ${{ env.CONTAINER_NAME }}="${IMAGE}" \
+                  ${{ env.DB_MIGRATE_CONTAINER_NAME }}="${IMAGE}"
+
                   kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deployment/${{ env.SERVICE_NAME }} --timeout=120s
