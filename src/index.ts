@@ -18,20 +18,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: 'Too many requests from this IP, please try again later.',
-});
-app.use(limiter);
-
-
-
-app.use('/api/v1/riders/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-app.use('/api/v1/riders', riderRoutes);
-
-
+// Health endpoints (NOT rate limited)
 app.get('/api/v1/riders/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -47,6 +34,18 @@ app.get('/api/v1/riders/ready', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Rate limiter (applies only to rider API routes)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests from this IP, please try again later.',
+});
+
+app.use('/api/v1/riders', limiter);
+
+app.use('/api/v1/riders/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api/v1/riders', riderRoutes);
 
 app.use('*', (req, res) => {
   res.status(404).json({
