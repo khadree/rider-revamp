@@ -22,7 +22,7 @@ const createTables = async () => {
 
     await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
 
-    // Check if tables already exist
+    // Check if tables already exist...
     const checkTable = await client.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
