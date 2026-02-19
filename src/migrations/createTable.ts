@@ -22,6 +22,21 @@ const createTables = async () => {
 
     await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
 
+    // Check if tables already exist
+    const checkTable = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'rider_service' 
+        AND table_name = 'riders'
+      );
+    `);
+
+    if (checkTable.rows[0].exists) {
+      console.log('✅ Tables already exist - skipping migration');
+      await client.query('COMMIT');
+      return;
+    }
+
     // 3. (Optional) Drop existing tables — comment out after first successful run
     //    or make it conditional / prompted in development only
     // console.log('🗑️  Dropping existing tables (if any)...');
