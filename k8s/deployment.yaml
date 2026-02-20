@@ -12,6 +12,15 @@ spec:
       labels:
         app: rider-service
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: rider-service
+                topologyKey: topology.kubernetes.io/zone
       initContainers:
         - name: rider-migrate
           image: 221693237976.dkr.ecr.us-east-1.amazonaws.com/nate-rideshare-rider-service:v1.0
