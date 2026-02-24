@@ -27,7 +27,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3003
+ENV PORT=3001
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
@@ -40,7 +40,7 @@ COPY --from=builder /app/package.json ./package.json
 
 USER rideruser
 
-EXPOSE 3003
+EXPOSE 3001
 
 # Healthcheck (optional but recommended for service)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
