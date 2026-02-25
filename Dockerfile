@@ -6,8 +6,12 @@ WORKDIR /app
 # ---- Dependencies ----
 FROM base AS deps
 COPY package.json package-lock.json* ./
-# RUN npm ci --omit=dev && npm cache clean --force
-RUN npm ci && npm cache clean --force
+RUN npm ci
+
+# ---- Production Dependencies ----
+FROM base AS prod-deps
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev && npm cache clean --force
 
 # ---- Build ----
 FROM base AS builder
@@ -23,21 +27,22 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3001
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
-RUN adduser -S driveruser -u 1001
+RUN adduser -S rideruser -u 1001
 
 # Copy only what's needed for runtime
 COPY --from=builder /app/dist ./dist
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
+USER rideruser
 
-EXPOSE 3003
+EXPOSE 3001
 
-# Healthcheck (optional but recommended for driver service)
+# Healthcheck (optional but recommended for service)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node healthcheck.js || exit 1
 

@@ -7,8 +7,13 @@ export class RiderTripServiceClient {
   private client: AxiosInstance;
 
   constructor(baseURL?: string) {
+    const tripUrl = process.env.TRIP_SERVICE_URL || 'http://localhost:3005/api/v1/trips';
+    const normalizedBaseURL = tripUrl.includes('/api/v1/trips')
+      ? tripUrl
+      : `${tripUrl.replace(/\/$/, '')}/api/v1/trips`;
+
     this.client = axios.create({
-      baseURL: baseURL || process.env.TRIP_SERVICE_URL || 'http://localhost:3005/api',
+      baseURL: baseURL || normalizedBaseURL,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -55,7 +60,7 @@ export class RiderTripServiceClient {
    */
   async getTripById(tripId: string): Promise<RiderTrip> {
     try {
-      const response = await this.client.get(`/trips/${tripId}`);
+      const response = await this.client.get(`/${tripId}`);
 
       if (!response.data.success) {
         throw new Error(response.data.error || 'Trip not found');
@@ -69,17 +74,17 @@ export class RiderTripServiceClient {
   }
 
   async getTripByRideRequestId(rideRequestId: string): Promise<any | null> {
-  try {
-    const response = await this.client.get(`/trips/by-ride-request/${rideRequestId}`);
-    if (response.data.success) {
-      return response.data.data.trip;
+    try {
+      const response = await this.client.get(`/request/${rideRequestId}/status`);
+      if (response.data.success) {
+        return response.data.data.trip;
+      }
+      return null;
+    } catch (error) {
+      console.log('No trip found for ride_request_id:', rideRequestId);
+      return null;
     }
-    return null;
-  } catch (error) {
-    console.log('No trip found for ride_request_id:', rideRequestId);
-    return null;
   }
-}
 
   /**
    * Health check

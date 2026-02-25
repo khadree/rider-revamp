@@ -93,7 +93,7 @@ export class RiderRepository {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    
+
     const result = await db.query(query, [
       riderData.firstName,
       riderData.lastName,
@@ -102,7 +102,7 @@ export class RiderRepository {
       riderData.passwordHash,
       riderData.verificationToken
     ]);
-    
+
     return this.mapRowToRider(result.rows[0]);
   }
 
@@ -123,7 +123,7 @@ export class RiderRepository {
       WHERE id = $2 
       RETURNING *
     `;
-    
+
     const result = await db.query(query, [isVerified, riderId]);
     return this.mapRowToRider(result.rows[0]);
   }
@@ -135,7 +135,7 @@ export class RiderRepository {
       WHERE id = $2 
       RETURNING *
     `;
-    
+
     const result = await db.query(query, [passwordHash, riderId]);
     return this.mapRowToRider(result.rows[0]);
   }
@@ -147,7 +147,7 @@ export class RiderRepository {
       WHERE id = $3 
       RETURNING *
     `;
-    
+
     const result = await db.query(query, [resetToken, expiry, riderId]);
     return this.mapRowToRider(result.rows[0]);
   }
@@ -157,7 +157,7 @@ export class RiderRepository {
       SELECT * FROM rider_service.riders 
       WHERE reset_token = $1 AND reset_token_expiry > CURRENT_TIMESTAMP
     `;
-    
+
     const result = await db.query(query, [resetToken]);
     return result.rows[0] ? this.mapRowToRider(result.rows[0]) : null;
   }
@@ -174,7 +174,7 @@ export class RiderRepository {
   static async createRideRequest(requestData: CreateRideRequestInput): Promise<RideRequest> {
     console.log('📥 Repository received:', {
       ...requestData,
-      riderId: requestData.riderId?.substring(0, 8) + '...' 
+      riderId: requestData.riderId?.substring(0, 8) + '...'
     });
 
     if (!requestData.riderId) {
@@ -198,7 +198,7 @@ export class RiderRepository {
     }
 
     let estimatedFare: number | null = null;
-    
+
     try {
       const fareEstimateRequest = {
         pickup_location: {
@@ -243,7 +243,7 @@ export class RiderRepository {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
-    
+
     const values = [
       requestData.riderId,
       requestData.pickupLat,
@@ -274,17 +274,17 @@ export class RiderRepository {
   }
 
   private static async calculateFallbackFare(requestData: CreateRideRequestInput): Promise<number> {
-    const R = 6371; 
-    
+    const R = 6371;
+
     const lat1 = requestData.pickupLat * Math.PI / 180;
     const lat2 = requestData.dropoffLat * Math.PI / 180;
     const deltaLat = (requestData.dropoffLat - requestData.pickupLat) * Math.PI / 180;
     const deltaLng = (requestData.dropoffLng - requestData.pickupLng) * Math.PI / 180;
 
-    const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
-              Math.cos(lat1) * Math.cos(lat2) *
-              Math.sin(deltaLng/2) * Math.sin(deltaLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) *
+      Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
 
     // Base fares based on vehicle type
