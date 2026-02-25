@@ -42,7 +42,7 @@ spec:
                 name: rider-service-credentials
           resources:
             requests:
-              cpu: 100m
+              cpu: 75m
               memory: 150Mi
             limits:
               cpu: 500m
