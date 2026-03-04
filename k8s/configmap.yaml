@@ -7,7 +7,7 @@ data:
   NODE_ENV: "production"
   PORT: "3001"
 
-  REDIS_HOST: "redis-headless.rideshare-data"
+  REDIS_HOST: "clean-mustang-37120.upstash.io"
   REDIS_PORT: "6379"
   FRONTEND_URL: "https://rideshare.nathanielamadi.live"
   EMAIL_SERVICE_URL: "http://email-service:3002"
