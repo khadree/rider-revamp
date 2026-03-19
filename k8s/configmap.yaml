@@ -7,12 +7,12 @@ data:
   NODE_ENV: "production"
   PORT: "3001"
 
-  REDIS_HOST: "clean-mustang-37120.upstash.io"
   REDIS_PORT: "6379"
-  FRONTEND_URL: "https://rideshare.nathanielamadi.live"
+  FRONTEND_URL: "https://DOMAIN_PLACEHOLDER"
   EMAIL_SERVICE_URL: "http://email-service:3002"
   RIDER_SERVICE_URL: "http://rider-service:3001"
   TRIP_SERVICE_URL: "http://trip-service:3005"
-  GOOGLE_REDIRECT_URI: "https://rideshare.nathanielamadi.live/api/v1/riders/auth/google/callback"
+  GOOGLE_REDIRECT_URI: "https://DOMAIN_PLACEHOLDER/api/v1/riders/auth/google/callback"
+  ALLOWED_ORIGINS: "https://DOMAIN_PLACEHOLDER,http://localhost:3000,http://127.0.0.1:3000"
 
   JWT_EXPIRES_IN: "7d"

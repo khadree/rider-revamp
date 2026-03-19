@@ -23,16 +23,19 @@ spec:
                 topologyKey: topology.kubernetes.io/zone
       initContainers:
         - name: rider-migrate
-          image: 221693237976.dkr.ecr.us-east-1.amazonaws.com/nate-rideshare-rider-service:v1.0
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: rider-service-config
             - secretRef:
                 name: rider-service-credentials
-          command: ["node","dist/migrations/createTable.js"]
+          command: ["node", "dist/migrations/createTable.js"]
+
       containers:
         - name: rider-service
-          image: 221693237976.dkr.ecr.us-east-1.amazonaws.com/nate-rideshare-rider-service:v1.0
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3001
           envFrom:
