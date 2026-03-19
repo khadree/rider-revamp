@@ -104,6 +104,7 @@ jobs:
                   sed -i "s|DOMAIN_PLACEHOLDER|${DOMAIN}|g" k8s/configmap.yaml
 
                   kubectl apply -n ${K8S_NAMESPACE} -f k8s/
+                  kubectl -n "${K8S_NAMESPACE}" rollout restart deployment/${SERVICE_NAME}
 
             - name: Verify rollout
               run: |
