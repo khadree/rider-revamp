@@ -46,7 +46,7 @@ jobs:
                       echo "DOMAIN=dev.rideshare.nathanielamadi.live" >> $GITHUB_ENV
                       ;;
                     staging)
-                      echo "AWS_REGION=us-east-1" >> $GITHUB_ENV
+                      echo "AWS_REGION=eu-west-2" >> $GITHUB_ENV
                       echo "DOMAIN=staging.rideshare.nathanielamadi.live" >> $GITHUB_ENV
                       ;;
                     prod)
