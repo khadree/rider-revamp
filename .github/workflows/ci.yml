@@ -1,0 +1,15 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pipeline:
+    uses: khadree/devops-platform-ci/.github/workflows/ci.yml@main
+    with:
+      service-name: driver-service          # ECR repo name
+      eks-deployment-name: driver-service   # Kubernetes deployment name
+    secrets: inherit                         # Passes all repo secrets automatically
