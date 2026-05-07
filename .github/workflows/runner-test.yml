@@ -20,3 +20,6 @@ jobs:
         run: |
           docker --version
           docker ps
+
+
+          ######## Optional: Run a test container to verify Docker is fully functional
