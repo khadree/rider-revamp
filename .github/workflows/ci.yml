@@ -1,15 +1,15 @@
-name: CI/CD
+# name: CI/CD
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#     branches: [main]
 
-jobs:
-  pipeline:
-    uses: khadree/devops-platform-ci/.github/workflows/ci.yml@main
-    with:
-      service-name: kadiri/rider-service         # ECR repo name
-    #   eks-deployment-name: rider-service   # Kubernetes deployment name
-    secrets: inherit                         # Passes all repo secrets automatically
+# jobs:
+#   pipeline:
+#     uses: khadree/devops-platform-ci/.github/workflows/ci.yml@main
+#     with:
+#       service-name: kadiri/rider-service         # ECR repo name
+#     #   eks-deployment-name: rider-service   # Kubernetes deployment name
+#     secrets: inherit                         # Passes all repo secrets automatically
