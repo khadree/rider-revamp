@@ -22,4 +22,4 @@ jobs:
           docker ps
 
 
-          ######## Optional: Run a test container to verify Docker is fully functional
+    ######## Optional: Run a test container to verify Docker is fully functional
