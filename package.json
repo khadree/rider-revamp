@@ -6,7 +6,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "ts-node src/database/migrations/createTables.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .js",
     "test": "jest"
   },
   "dependencies": {
