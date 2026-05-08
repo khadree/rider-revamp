@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: kadiri-runners-rider    # ← must match runnerScaleSetName exactly
+    runs-on: rider-runner-kadiri    # ← must match runnerScaleSetName exactly
     steps:
       - uses: actions/checkout@v4
 
