@@ -12,7 +12,7 @@ jobs:
     with:
       service-name: kadiri/rider-service         # ECR repo name
       eks-deployment-name: rider-service   # Kubernetes deployment name
-      language: "python"                      # Language for codeql scanning
+      language: "javascript"                      # Language for codeql scanning
       trivy-severity: "CRITICAL,HIGH"
      # deploy: true 
     secrets: inherit                         # Passes all repo secrets automatically
