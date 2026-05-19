@@ -16,7 +16,7 @@ jobs:
   pipeline:
     uses: khadree/devops-platform-ci/.github/workflows/ci.yml@main
     with:
-      service-name: kadiri/rider-service         # ECR repo name
+      service-name: kadiri-rider-service # ECR repo name
       eks-deployment-name: rider-service   # Kubernetes deployment name
       language: "javascript"                      # Language for codeql scanning
       trivy-severity: "CRITICAL,HIGH"
