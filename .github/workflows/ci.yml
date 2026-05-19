@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# GRANT GLOBAL PERMISSIONS SO THE REUSABLE WORKFLOW CAN INHERIT THEM
+permissions:
+  actions: read
+  security-events: write
+  contents: read
+
 jobs:
   pipeline:
     uses: khadree/devops-platform-ci/.github/workflows/ci.yml@main
