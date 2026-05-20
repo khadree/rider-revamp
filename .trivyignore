@@ -1,0 +1,5 @@
+# CVE-2026-33671: picomatch ReDoS
+# Only present in devDependencies (jest -> tinyglobby -> picomatch)
+# Not included in production image (npm ci --omit=dev in prod-deps stage)
+# Confirmed false positive for runtime image
+CVE-2026-33671
